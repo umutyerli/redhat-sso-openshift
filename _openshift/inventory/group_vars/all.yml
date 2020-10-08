@@ -1,0 +1,40 @@
+---
+ansible_host: localhost
+ansible_connection: local
+
+project_params:
+  NAMESPACE: "{{ namespace_name }}"
+
+deployment_config_params:
+  IMAGE_VERSION: "{{ image_version if image_version is defined else 'latest' }}"
+
+route_params:
+  APPS_SUBDOMAIN: "{{ apps_subdomain if apps_subdomain is defined else 'ocp.nvsconsulting.io' }}"
+
+openshift_cluster_content:
+  - galaxy_requirements:
+      - "{{ playbook_dir }}/roles/requirements.yml"
+  - object: Create Application Resources
+    pre_steps:
+      - role: openshift_cluster_login
+        vars:
+          ocp_token: "{{ ocp_token }}"
+          ocp_url: "{{ ocp_url }}"
+    content:
+      - name: Image Stream 
+        template: "{{ playbook_dir }}/sso74-image-stream.yaml"
+        params_from_vars: "{{ project_params }}"
+        namespace: "openshift"
+        when: "{{ import_image_stream_bool == 'true'}}"
+
+      - name: Persistent SSO 7.4 Template
+        template: "{{ playbook_dir }}/sso74-x509-https.yaml"
+        params_from_vars: "{{ project_params }}"
+        namespace: "{{ project_params.NAMESPACE }}"
+        when: "{{ persistent == 'true'}}"
+
+      - name: Non Persistent SSO 7.4 Template
+        template: "{{ playbook_dir }}/sso74-x509-https.yaml"
+        params_from_vars: "{{ project_params }}"
+        namespace: "{{ project_params.NAMESPACE }}"
+        when: "{{ persistent != 'true' }}"
